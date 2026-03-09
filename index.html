@@ -1,0 +1,398 @@
+<!-- START OF FILE Chatbox.html (Updated Version) -->
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>ห้องสมุดอัจฉริยะ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* --- General Styles (สำคัญมาก) --- */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: transparent; /* ทำให้พื้นหลังโปร่งใส */
+            overflow: hidden; /* ป้องกัน scrollbar ที่ไม่ต้องการเด็ดขาด */
+        }
+
+        /* --- Chat Widget Container --- */
+        #chat-widget-container {
+            width: 100%;
+            height: 100%;
+            position: relative; /* เป็นจุดอ้างอิงให้ bubble และ popup */
+        }
+
+        /* --- Chat Bubble (Button to open chat) --- */
+        #chat-bubble {
+            width: 60px;
+            height: 60px;
+            background-color: #007bff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+            
+            /* จัดตำแหน่งให้อยู่มุมขวาล่างของ iframe เสมอ */
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 2; /* ให้อยู่เหนือ popup ที่ถูกซ่อน */
+        }
+
+        #chat-bubble:hover {
+            transform: scale(1.1);
+        }
+
+        #chat-bubble svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+
+        /* --- Chat Popup Window --- */
+        #chat-popup {
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* --- Hidden State for Popup and Bubble --- */
+        #chat-popup.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #chat-bubble.hidden {
+            transform: scale(0);
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        /* --- Chat Header --- */
+        #chat-header {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            flex-shrink: 0; /* ป้องกัน header หดตัว */
+        }
+
+        #close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        /* --- Chat Messages Area --- */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            background-color: #f9f9f9;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            background-color: #e9e9eb;
+            color: black;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        /* Styles for Suggested Questions */
+        .suggested-questions-container {
+            margin-top: 10px;
+            padding-left: 0;
+            align-self: flex-start;
+            width: 100%;
+        }
+
+        .suggestion-chip {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px 4px 4px 0;
+            font-size: 13px;
+            color: #007bff;
+            background-color: #ffffff;
+            border: 1px solid #007bff;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .suggestion-chip:hover {
+            background-color: #007bff;
+            color: white;
+        }
+
+        /* --- Loading Indicator --- */
+        .loader {
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+        }
+        .loader .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ccc;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .loader .dot:nth-child(1) { animation-delay: -0.32s; }
+        .loader .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        
+        /* --- Input Area --- */
+        #input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background-color: #fff;
+            flex-shrink: 0; /* ป้องกัน input หดตัว */
+        }
+        #user-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            margin-right: 8px;
+            outline: none;
+        }
+        #user-input:focus {
+          border-color: #007bff;
+        }
+        #send-button {
+            padding: 8px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-widget-container">
+    
+        <div id="chat-popup">
+            <div id="chat-header">
+                <span>ห้องสมุดอัจฉริยะ</span>
+                <button id="close-btn">&times;</button>
+            </div>
+            <div id="chat-container">
+                <!-- Initial message is now handled by script -->
+            </div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="พิมพ์คำถามของคุณ..." onkeypress="handleKeyPress(event)">
+                <button id="send-button" onclick="sendMessage()">ส่ง</button>
+            </div>
+        </div>
+
+        <div id="chat-bubble">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+        </div>
+
+    </div>
+
+    <script>
+      // --- START: การเปลี่ยนแปลงที่สำคัญ ---
+      // ใส่ URL ของ Web App ที่ได้จากการ Deploy Google Apps Script ในขั้นตอนที่ 3.1
+      const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwUw1SdzxbfrnE45LYPEPscV9VazD_CupFJMdMzyiGhunfionFNl5Rctsj-OcxtytWD/exec'; 
+      // --- END: การเปลี่ยนแปลงที่สำคัญ ---
+
+      const chatPopup = document.getElementById('chat-popup');
+      const chatBubble = document.getElementById('chat-bubble');
+      const closeBtn = document.getElementById('close-btn');
+      
+      function toggleChatWindow() {
+        chatPopup.classList.toggle('hidden');
+        chatBubble.classList.toggle('hidden');
+        // ส่วนนี้ยังคงไว้เผื่อนำไป embed ในเว็บอื่น
+        // window.parent.postMessage('toggleChat', '*');
+      }
+
+      chatBubble.addEventListener('click', toggleChatWindow);
+      closeBtn.addEventListener('click', toggleChatWindow);
+      
+      // Function for handling suggested questions
+      function askSuggestion(element) {
+          const questionText = element.textContent;
+          const userInput = document.getElementById('user-input');
+          
+          userInput.value = questionText;
+          sendMessage();
+      }
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        chatPopup.classList.add('hidden');
+        chatBubble.classList.remove('hidden');
+        
+        // Add the initial greeting message and suggestions dynamically
+        const initialData = {
+          answer: "สวัสดีค่ะ มีคำถามเกี่ยวกับห้องสมุด ให้ฉันช่วยตอบไหมคะ?",
+          suggestions: ["ห้องสมุดเปิด-ปิดกี่โมง", "ขั้นตอนการยืมหนังสือ", "ติดต่อบรรณารักษ์"]
+        };
+        // เรียกใช้ showBotResponse โดยตรงด้วย Object (ไม่ใช่ JSON string)
+        showBotResponse(initialData);
+      });
+
+      // --- Core Chat Functions (Updated) ---
+      const chatContainer = document.getElementById('chat-container');
+      const userInput = document.getElementById('user-input');
+
+      // --- START: แก้ไข sendMessage() ให้ใช้ fetch() ---
+      function sendMessage() {
+        const messageText = userInput.value.trim();
+        if (messageText === '') return;
+        
+        // ตรวจสอบว่าได้ใส่ URL หรือยัง
+        if (WEB_APP_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+            alert('กรุณาตั้งค่า WEB_APP_URL ในไฟล์ HTML ก่อนใช้งาน');
+            return;
+        }
+
+        removeExistingSuggestions();
+        appendMessage(messageText, 'user-message');
+        userInput.value = '';
+        showLoadingIndicator();
+        
+        // ใช้ fetch API เพื่อส่ง request ไปยัง Google Apps Script
+        fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8', // Apps Script doPost มักจะรับ text/plain ได้ดีกว่า
+          },
+          body: JSON.stringify({ userInput: messageText }) // ส่งข้อมูลในรูปแบบ JSON string
+        })
+        .then(response => response.json()) // แปลง response กลับเป็น JavaScript object
+        .then(data => {
+            showBotResponse(data); // ส่ง object ที่ได้ไปแสดงผล
+        })
+        .catch(error => {
+            showError(error); // แสดงข้อผิดพลาดหากการเชื่อมต่อล้มเหลว
+        });
+      }
+      // --- END: แก้ไข sendMessage() ---
+      
+      // --- START: แก้ไข showBotResponse() ให้รับ Object ---
+      function showBotResponse(data) { // รับพารามิเตอร์เป็น object (data) ไม่ใช่ string
+          hideLoadingIndicator();
+          // ไม่ต้องใช้ try-catch และ JSON.parse แล้ว
+          // Append the main answer
+          if (data.answer) {
+              appendMessage(data.answer, 'bot-message');
+          }
+          
+          // Append new suggestions if they exist
+          if (data.suggestions && data.suggestions.length > 0) {
+              appendSuggestions(data.suggestions);
+          }
+      }
+      // --- END: แก้ไข showBotResponse() ---
+
+      function showError(error) {
+        hideLoadingIndicator();
+        console.error('Fetch Error:', error);
+        appendMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'bot-message');
+      }
+      
+      function appendMessage(text, className) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + className;
+        messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+      
+      function appendSuggestions(suggestions) {
+        removeExistingSuggestions();
+        
+        const suggestionsContainer = document.createElement('div');
+        suggestionsContainer.className = 'suggested-questions-container';
+        
+        suggestions.forEach(text => {
+            const chip = document.createElement('div');
+            chip.className = 'suggestion-chip';
+            chip.textContent = text;
+            chip.onclick = function() { askSuggestion(this); };
+            suggestionsContainer.appendChild(chip);
+        });
+        
+        chatContainer.appendChild(suggestionsContainer);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function removeExistingSuggestions() {
+          const existingSuggestions = chatContainer.querySelector('.suggested-questions-container');
+          if (existingSuggestions) {
+              existingSuggestions.remove();
+          }
+      }
+      
+      function showLoadingIndicator() {
+        const loaderDiv = document.createElement('div');
+        loaderDiv.id = 'loader';
+        loaderDiv.className = 'message loader';
+        loaderDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+        chatContainer.appendChild(loaderDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+      
+      function hideLoadingIndicator() {
+        const loader = document.getElementById('loader');
+        if (loader) {
+          loader.remove();
+        }
+      }
+      
+      function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+          sendMessage();
+        }
+      }
+    </script>
+</body>
+</html>
