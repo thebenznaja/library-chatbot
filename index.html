@@ -250,14 +250,11 @@
       function toggleChatWindow() {
         chatPopup.classList.toggle('hidden');
         chatBubble.classList.toggle('hidden');
-        // ส่วนนี้ยังคงไว้เผื่อนำไป embed ในเว็บอื่น
-        // window.parent.postMessage('toggleChat', '*');
       }
 
       chatBubble.addEventListener('click', toggleChatWindow);
       closeBtn.addEventListener('click', toggleChatWindow);
       
-      // Function for handling suggested questions
       function askSuggestion(element) {
           const questionText = element.textContent;
           const userInput = document.getElementById('user-input');
@@ -270,25 +267,20 @@
         chatPopup.classList.add('hidden');
         chatBubble.classList.remove('hidden');
         
-        // Add the initial greeting message and suggestions dynamically
         const initialData = {
           answer: "สวัสดีค่ะ มีคำถามเกี่ยวกับห้องสมุด ให้ฉันช่วยตอบไหมคะ?",
           suggestions: ["ห้องสมุดเปิด-ปิดกี่โมง", "ขั้นตอนการยืมหนังสือ", "ติดต่อบรรณารักษ์"]
         };
-        // เรียกใช้ showBotResponse โดยตรงด้วย Object (ไม่ใช่ JSON string)
         showBotResponse(initialData);
       });
 
-      // --- Core Chat Functions (Updated) ---
       const chatContainer = document.getElementById('chat-container');
       const userInput = document.getElementById('user-input');
 
-      // --- START: แก้ไข sendMessage() ให้ใช้ fetch() ---
       function sendMessage() {
         const messageText = userInput.value.trim();
         if (messageText === '') return;
         
-        // ตรวจสอบว่าได้ใส่ URL หรือยัง
         if (WEB_APP_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
             alert('กรุณาตั้งค่า WEB_APP_URL ในไฟล์ HTML ก่อนใช้งาน');
             return;
@@ -299,39 +291,39 @@
         userInput.value = '';
         showLoadingIndicator();
         
-        // ใช้ fetch API เพื่อส่ง request ไปยัง Google Apps Script
+        // --- START: ปรับปรุงส่วน fetch ---
         fetch(WEB_APP_URL, {
           method: 'POST',
+          mode: 'cors', // เพิ่มโหมด cors เพื่อความชัดเจน
           headers: {
-            'Content-Type': 'text/plain;charset=utf-8', // Apps Script doPost มักจะรับ text/plain ได้ดีกว่า
+            'Content-Type': 'application/json', // เปลี่ยนเป็น application/json
           },
-          body: JSON.stringify({ userInput: messageText }) // ส่งข้อมูลในรูปแบบ JSON string
+          body: JSON.stringify({ userInput: messageText })
         })
-        .then(response => response.json()) // แปลง response กลับเป็น JavaScript object
+        .then(response => {
+            if (!response.ok) { // ตรวจสอบสถานะของ response ก่อน
+                throw new Error(`Network response was not ok: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            showBotResponse(data); // ส่ง object ที่ได้ไปแสดงผล
+            showBotResponse(data);
         })
         .catch(error => {
-            showError(error); // แสดงข้อผิดพลาดหากการเชื่อมต่อล้มเหลว
+            showError(error);
         });
+        // --- END: ปรับปรุงส่วน fetch ---
       }
-      // --- END: แก้ไข sendMessage() ---
       
-      // --- START: แก้ไข showBotResponse() ให้รับ Object ---
-      function showBotResponse(data) { // รับพารามิเตอร์เป็น object (data) ไม่ใช่ string
+      function showBotResponse(data) {
           hideLoadingIndicator();
-          // ไม่ต้องใช้ try-catch และ JSON.parse แล้ว
-          // Append the main answer
           if (data.answer) {
               appendMessage(data.answer, 'bot-message');
           }
-          
-          // Append new suggestions if they exist
           if (data.suggestions && data.suggestions.length > 0) {
               appendSuggestions(data.suggestions);
           }
       }
-      // --- END: แก้ไข showBotResponse() ---
 
       function showError(error) {
         hideLoadingIndicator();
